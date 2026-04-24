@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  visicore:
+    build: .
+    container_name: visicore-app
+    restart: unless-stopped
+    environment:
+      - PORT=5001
+      - HTTPS=false
+      - PRAXIS_STADT=${PRAXIS_STADT:-Wuerzburg}
+      - SECRET_KEY=${SECRET_KEY}
+      - DB_KEY=${DB_KEY}
+    volumes:
+      - visicore-data:/app/data
+      - visicore-backups:/app/backups
+    networks:
+      - visicore-net
+    # Für direkten Port-Zugriff (ohne Caddy):
+    # ports:
+    #   - "5001:5001"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: visicore-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - visicore-net
+    depends_on:
+      - visicore
+
+volumes:
+  visicore-data:
+  visicore-backups:
+  caddy-data:
+  caddy-config:
+
+networks:
+  visicore-net:
+    driver: bridge

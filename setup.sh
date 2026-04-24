@@ -5,7 +5,7 @@ CAREHOMES_DIR="/opt/carehomes"
 VISICORE_SRC="$CAREHOMES_DIR/visicore-src"
 NGINX_AVAILABLE="/etc/nginx/sites-available/carehomes"
 NGINX_ENABLED="/etc/nginx/sites-enabled/carehomes"
-DOMAIN="carehomes.hausaerzte-im-grillepark.online"
+DOMAIN="carehomes.DEINE-DOMAIN.de"
 
 echo "================================================"
 echo "  CareHomes (VisiCore) Server-Setup"

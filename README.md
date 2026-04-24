@@ -10,7 +10,7 @@ Voraussetzung: Docker + Docker Compose + Nginx sind bereits installiert (z.B. fu
 ### 1. Auf dem Server einloggen
 
 ```bash
-ssh root@87.106.23.237
+ssh USER@DEINE-SERVER-IP
 ```
 
 ### 2. Das carehomes-Repo klonen
@@ -35,7 +35,7 @@ Das Skript erledigt automatisch:
 
 ### 4. Erstzugriff
 
-- **URL:** https://carehomes.hausaerzte-im-grillepark.online
+- **URL:** https://carehomes.DEINE-DOMAIN.de
 - **Login:** `admin` / `admin`
 - **Aktion:** Passwort sofort aendern!
 
@@ -66,7 +66,7 @@ docker compose up -d --build
 cat > /etc/nginx/sites-available/carehomes \ls
 server {
     listen 80;
-    server_name carehomes.hausaerzte-im-grillepark.online;
+    server_name carehomes.DEINE-DOMAIN.de;
     location / {
         proxy_pass http://localhost:5002;
         proxy_set_header Host $host;
@@ -80,7 +80,7 @@ ln -s /etc/nginx/sites-available/carehomes /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
 
 # 6. SSL
-certbot --nginx -d carehomes.hausaerzte-im-grillepark.online
+certbot --nginx -d carehomes.DEINE-DOMAIN.de
 ```
 
 ---
@@ -91,8 +91,8 @@ certbot --nginx -d carehomes.hausaerzte-im-grillepark.online
 [Internet]
     |
 [Nginx :80/:443]
-    |-- carehomes.hausaerzte... (proxy_pass :5002)
-    |-- medorder.hausaerzte... (proxy_pass :3000)
+    |-- carehomes.DEINE-DOMAIN... (proxy_pass :5002)
+    |-- medorder.DEINE-DOMAIN... (proxy_pass :3000)
     |
 [Docker Host]
     |-- carehomes-app (VisiCore :5002)

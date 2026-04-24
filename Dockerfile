@@ -20,5 +20,8 @@ COPY . .
 # Persistente Daten (Datenbank, Backups)
 VOLUME ["/app/data", "/app/backups"]
 
-# WSGI-Entrypoint für Produktion
+# Port exposen (wird ueber .env gesteuert)
+EXPOSE 5002
+
+# WSGI-Entrypoint fuer Produktion
 CMD ["python", "wsgi.py"]

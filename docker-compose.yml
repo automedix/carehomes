@@ -3,45 +3,26 @@ version: '3.8'
 services:
   visicore:
     build: .
-    container_name: visicore-app
+    container_name: carehomes-app
     restart: unless-stopped
     environment:
-      - PORT=5001
+      - PORT=${PORT:-5002}
       - HTTPS=false
       - PRAXIS_STADT=${PRAXIS_STADT:-Wuerzburg}
       - SECRET_KEY=${SECRET_KEY}
       - DB_KEY=${DB_KEY}
     volumes:
-      - visicore-data:/app/data
-      - visicore-backups:/app/backups
-    networks:
-      - visicore-net
-    # Für direkten Port-Zugriff (ohne Caddy):
-    # ports:
-    #   - "5001:5001"
-
-  caddy:
-    image: caddy:2-alpine
-    container_name: visicore-caddy
-    restart: unless-stopped
+      - carehomes-data:/app/data
+      - carehomes-backups:/app/backups
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
+      - "${PORT:-5002}:5002"
     networks:
-      - visicore-net
-    depends_on:
-      - visicore
+      - carehomes-net
 
 volumes:
-  visicore-data:
-  visicore-backups:
-  caddy-data:
-  caddy-config:
+  carehomes-data:
+  carehomes-backups:
 
 networks:
-  visicore-net:
+  carehomes-net:
     driver: bridge

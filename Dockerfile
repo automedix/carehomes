@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 
-# System-Abhängigkeiten für SQLCipher
+# System-Abhaengigkeiten fuer SQLCipher
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libsqlcipher-dev \
@@ -10,12 +10,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Python-Abhängigkeiten
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Anwendungscode
+# ALLE Dateien (inkl. requirements.txt) kopieren
 COPY . .
+
+# Python-Abhaengigkeiten installieren
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Persistente Daten (Datenbank, Backups)
 VOLUME ["/app/data", "/app/backups"]

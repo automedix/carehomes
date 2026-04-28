@@ -2,11 +2,11 @@ version: '3.8'
 
 services:
   caravax:
-    build: ./visicore-src
+    build: .
     container_name: caravax-app
     restart: unless-stopped
     environment:
-      - PORT=${PORT:-5002}
+      - PORT=5002
       - HTTPS=false
       - PRAXIS_STADT=${PRAXIS_STADT:-Wuerzburg}
       - SECRET_KEY=${SECRET_KEY}
@@ -15,7 +15,7 @@ services:
       - caravax-data:/app/data
       - caravax-backups:/app/backups
     ports:
-      - "${PORT:-5002}:5002"
+      - "5002:5002"
     networks:
       - caravax-net
 

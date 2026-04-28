@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+
+# Environment
+.env
+
+# Database
+data/
+database.db
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Legacy
+Legacy/
+
+# Temp / Dev notes
+.tmp/
+findings.md
+gemini.md
+progress.md
+task_plan.md
+
+# Test
+test_exe/
+
+# Claude
+.claude/

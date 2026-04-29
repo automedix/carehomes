@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}{% if blutentnahme %}Blutentnahme bearbeiten{% else %}Neue Blutentnahme{% endif %} – {{ app_name }}{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+    <a href="{{ url_for('patienten_liste') }}">Patienten</a>
+    <span class="sep">›</span>
+    <a href="{{ url_for('patient_detail', id=patient.id) }}">{{ patient.nachname }}, {{ patient.vorname }}</a>
+    <span class="sep">›</span>
+    <span>{% if blutentnahme %}Blutentnahme bearbeiten{% else %}Neue Blutentnahme{% endif %}</span>
+</div>
+<div class="page-header">
+    <h1>{% if blutentnahme %}✏️ Blutentnahme bearbeiten{% else %}🩸 Neue Blutentnahme{% endif %}</h1>
+</div>
+<div class="card">
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        {% if not blutentnahme %}
+        <!-- Nur bei Neuanlage -->
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label" for="anlass">Anlass der Blutentnahme *</label>
+                <input type="text" id="anlass" name="anlass" class="form-control" required list="anlass-liste"
+                    placeholder="z.B. INR, HbA1c, Differentialblutbild…">
+                <datalist id="anlass-liste">
+                    <option value="INR (Quick)">
+                    <option value="HbA1c">
+                    <option value="Differentialblutbild">
+                    <option value="TSH">
+                    <option value="Kreatinin">
+                    <option value="Leberwerte">
+                    <option value="Lipidprofil">
+                    <option value="Vitamin D">
+                    <option value="Vitamin B12">
+                    <option value="CRP">
+                </datalist>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="wiederholung_intervall_monate">Intervall (Monate)</label>
+                <input type="number" id="wiederholung_intervall_monate" name="wiederholung_intervall_monate"
+                    class="form-control" min="0" placeholder="z.B. 3">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-check">
+                <input type="checkbox" name="ist_standard"> Standard-Blutentnahme
+            </label>
+        </div>
+        {% else %}
+        <!-- Bei Bearbeitung: Vollständiges Formular -->
+        <h3 style="margin-bottom:1rem;">{{ blutentnahme.anlass }}</h3>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-control">
+                    <option value="OFFEN" {% if blutentnahme.status=='OFFEN' %}selected{% endif %}>Offen</option>
+                    <option value="GEPLANT" {% if blutentnahme.status=='GEPLANT' %}selected{% endif %}>Geplant</option>
+                    <option value="DURCHGEFUEHRT" {% if blutentnahme.status=='DURCHGEFUEHRT' %}selected{% endif %}>
+                        Durchgeführt</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">Plan-Datum</label>
+                <input type="date" name="plan_datum" class="form-control"
+                    value="{{ blutentnahme.plan_datum if blutentnahme.plan_datum else '' }}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Durchführungsdatum</label>
+                <input type="date" name="durchfuehrung_datum" class="form-control"
+                    value="{{ blutentnahme.durchfuehrung_datum if blutentnahme.durchfuehrung_datum else '' }}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Intervall (Monate)</label>
+                <input type="number" name="wiederholung_intervall_monate" class="form-control" min="0"
+                    value="{{ blutentnahme.wiederholung_intervall_monate if blutentnahme.wiederholung_intervall_monate else '' }}">
+            </div>
+        </div>
+
+        {% if blutentnahme.naechste_faelligkeit %}
+        <div
+            style="margin-bottom:1rem; padding:0.75rem; background:var(--info-bg); border-radius:var(--radius-sm); color:var(--info); font-size:0.85rem;">
+            📅 Nächste Fälligkeit: {{ blutentnahme.naechste_faelligkeit|datum }}
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <div class="btn-group">
+            <button type="submit" class="btn btn-primary">💾 Speichern</button>
+            <a href="{{ url_for('patient_detail', id=patient.id) }}" class="btn btn-outline">Abbrechen</a>
+        </div>
+    </form>
+
+    {% if blutentnahme %}
+    <div
+        style="margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; align-items:center;">
+        <form method="POST" action="{{ url_for('blutentnahme_loeschen', id=blutentnahme.id) }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Blutentnahme löschen?')">🗑
+                Löschen</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+{% if blutentnahme %}
+<!-- Dokumentation -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">📝 Dokumentation</h3>
+    </div>
+
+    {% if dokus %}
+    <div class="table-responsive" style="border:none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Durchführung</th>
+                    <th>Bemerkung</th>
+                    <th>Erstellt</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in dokus %}
+                <tr>
+                    <td>{{ d.durchfuehrung_datum|datum if d.durchfuehrung_datum else '–' }}</td>
+                    <td style="white-space:pre-wrap; max-width:400px;">{{ d.bemerkung or '–' }}</td>
+                    <td>{{ d.erstellt_am|zeitstempel }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline" onclick="toggleEditDoku({{ d.id }})">✏️</button>
+                            <form method="POST" action="{{ url_for('blutentnahme_doku_loeschen', did=d.id) }}" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Eintrag löschen?')">🗑</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="edit-doku-{{ d.id }}" style="display:none;">
+                    <td colspan="4" style="background:var(--bg-secondary);">
+                        <form method="POST" action="{{ url_for('blutentnahme_doku_bearbeiten', did=d.id) }}" style="display:flex; gap:0.75rem; align-items:end; flex-wrap:wrap;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="form-group" style="margin-bottom:0;">
+                                <label class="form-label">Durchführung</label>
+                                <input type="date" name="durchfuehrung_datum" class="form-control" value="{{ d.durchfuehrung_datum if d.durchfuehrung_datum else '' }}">
+                            </div>
+                            <div class="form-group" style="flex:1; min-width:250px; margin-bottom:0;">
+                                <label class="form-label">Bemerkung</label>
+                                <textarea name="bemerkung" class="form-control" rows="2">{{ d.bemerkung or '' }}</textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">💾 Speichern</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('blutentnahme_doku_neu', bid=blutentnahme.id) }}"
+        style="display:flex; gap:0.75rem; align-items:end; flex-wrap:wrap; margin-top:1rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Durchführungsdatum</label>
+            <input type="date" name="durchfuehrung_datum" class="form-control">
+        </div>
+        <div class="form-group" style="flex:1; min-width:250px; margin-bottom:0;">
+            <label class="form-label">Bemerkung</label>
+            <textarea name="bemerkung" class="form-control" rows="2" placeholder="Ergebnisse, Hinweise…"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">➕ Hinzufügen</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleEditDoku(id) {
+        const row = document.getElementById('edit-doku-' + id);
+        if (row.style.display === 'none') {
+            row.style.display = 'table-row';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+</script>
+{% endblock %}

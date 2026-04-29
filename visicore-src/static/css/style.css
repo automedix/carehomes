@@ -6,10 +6,10 @@
 /* ── CSS Custom Properties ──────────────────────────────── */
 :root {
     /* Farben */
-    --bg-primary: #0f1117;
-    --bg-secondary: #1a1d27;
-    --bg-card: #1e2130;
-    --bg-card-hover: #252840;
+    --bg-primary: #152238;
+    --bg-secondary: #1a2744;
+    --bg-card: #1e2f4d;
+    --bg-card-hover: #243a5e;
     --bg-input: #252840;
     --bg-input-focus: #2d3050;
 

@@ -237,6 +237,50 @@
     {% endif %}
 </div>
 
+<!-- Blutentnahmen -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">🩸 Blutentnahmen</h3>
+        <a href="{{ url_for('blutentnahme_neu', p_id=patient.id) }}" class="btn btn-sm btn-primary">➕ Neue Blutentnahme</a>
+    </div>
+    {% if blutentnahmen %}
+    <div class="table-responsive" style="border:none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Anlass</th>
+                    <th>Status</th>
+                    <th>Plan-Datum</th>
+                    <th>Durchführung</th>
+                    <th>Nächste Fälligkeit</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in blutentnahmen %}
+                <tr>
+                    <td><strong>{{ b.anlass }}</strong></td>
+                    <td>
+                        <span class="badge badge-{{ b.status|lower }}">{{ b.status }}</span>
+                    </td>
+                    <td>{{ b.plan_datum|datum if b.plan_datum else '–' }}</td>
+                    <td>{{ b.durchfuehrung_datum|datum if b.durchfuehrung_datum else '–' }}</td>
+                    <td>{{ b.naechste_faelligkeit|datum if b.naechste_faelligkeit else '–' }}</td>
+                    <td>
+                        <a href="{{ url_for('blutentnahme_bearbeiten', id=b.id) }}" class="btn btn-sm btn-outline">✏️</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:1.5rem;">
+        <p style="color:var(--text-muted);">Keine Blutentnahmen angelegt.</p>
+    </div>
+    {% endif %}
+</div>
+
 <!-- Dokumente -->
 <div class="card">
     <div class="card-header">

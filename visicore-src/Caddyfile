@@ -3,8 +3,9 @@
 }
 
 :80 {
-    reverse_proxy caravax-app:5002
+    reverse_proxy visicore-app:5001
     
+    # Sicherheits-Header
     header {
         X-Content-Type-Options nosniff
         X-Frame-Options DENY
@@ -12,6 +13,7 @@
         Referrer-Policy strict-origin-when-cross-origin
     }
     
+    # Logs
     log {
         output file /var/log/caddy/access.log
     }

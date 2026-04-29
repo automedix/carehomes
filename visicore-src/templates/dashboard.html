@@ -39,6 +39,14 @@
         </div>
     </a>
 
+    <a href="{{ url_for('blutentnahmen_liste') }}" class="stat-card" style="text-decoration:none; color:inherit;">
+        <div class="stat-icon red">🩸</div>
+        <div>
+            <div class="stat-value">{{ stats.blutentnahmen_offen }}</div>
+            <div class="stat-label">Offene Blutentnahmen</div>
+        </div>
+    </a>
+
     <a href="{{ url_for('tagesplan') }}" class="stat-card" style="text-decoration:none; color:inherit;">
         <div class="stat-icon red">📅</div>
         <div>

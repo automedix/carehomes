@@ -78,6 +78,17 @@
                 </div>
 
                 <div class="nav-section">
+                    <div class="nav-section-title">Blutentnahmen</div>
+                    <a href="{{ url_for('blutentnahmen_liste') }}"
+                        class="nav-link {% if request.endpoint == 'blutentnahmen_liste' %}active{% endif %}">
+                        <span class="nav-icon">🩸</span> Alle Blutentnahmen
+                    </a>
+                    <a href="{{ url_for('blutentnahmen_liste', status='offen') }}" class="nav-link">
+                        <span class="nav-icon">📋</span> Offen / Geplant
+                    </a>
+                </div>
+
+                <div class="nav-section">
                     <div class="nav-section-title">Team</div>
                     <a href="{{ url_for('behandler_liste') }}"
                         class="nav-link {% if 'behandler' in request.endpoint|default('') %}active{% endif %}">

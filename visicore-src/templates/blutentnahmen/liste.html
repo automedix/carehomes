@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Blutentnahmen – {{ app_name }}{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <span class="sep">›</span>
+    <span>Blutentnahmen</span>
+</div>
+
+<div class="page-header">
+    <h1>🩸 Blutentnahmen</h1>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Übersicht</h3>
+        <div class="btn-group">
+            <a href="{{ url_for('blutentnahmen_liste') }}" class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-outline{% endif %}">Alle</a>
+            <a href="{{ url_for('blutentnahmen_liste', status='offen') }}" class="btn btn-sm {% if status_filter == 'offen' %}btn-primary{% else %}btn-outline{% endif %}">Offen / Geplant</a>
+            <a href="{{ url_for('blutentnahmen_liste', status='durchgefuehrt') }}" class="btn btn-sm {% if status_filter == 'durchgefuehrt' %}btn-primary{% else %}btn-outline{% endif %}">Durchgeführt</a>
+        </div>
+    </div>
+
+    {% if blutentnahmen %}
+    <div class="table-responsive" style="border:none;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Anlass</th>
+                    <th>Status</th>
+                    <th>Plan-Datum</th>
+                    <th>Durchführung</th>
+                    <th>Nächste Fälligkeit</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in blutentnahmen %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('patient_detail', id=b.patient_id) }}">
+                            <strong>{{ b.nachname }}, {{ b.vorname }}</strong>
+                        </a>
+                    </td>
+                    <td><strong>{{ b.anlass }}</strong></td>
+                    <td>
+                        <span class="badge badge-{{ b.status|lower }}">{{ b.status }}</span>
+                    </td>
+                    <td>{{ b.plan_datum|datum if b.plan_datum else '–' }}</td>
+                    <td>{{ b.durchfuehrung_datum|datum if b.durchfuehrung_datum else '–' }}</td>
+                    <td>{{ b.naechste_faelligkeit|datum if b.naechste_faelligkeit else '–' }}</td>
+                    <td>
+                        <a href="{{ url_for('blutentnahme_bearbeiten', id=b.id) }}" class="btn btn-sm btn-outline">✏️</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding:1.5rem;">
+        <p style="color:var(--text-muted);">Keine Blutentnahmen vorhanden.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

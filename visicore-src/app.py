@@ -413,9 +413,11 @@ def create_app():
             bewohner_liste = []
             for p in patienten:
                 offene_impfungen = db.get_offene_impfungen(p['id'])
+                offene_blutentnahmen = db.get_offene_blutentnahmen(p['id'])
                 bewohner_liste.append({
                     'daten': p,
-                    'impfungen': offene_impfungen
+                    'impfungen': offene_impfungen,
+                    'blutentnahmen': offene_blutentnahmen
                 })
             stationen_mit_bewohnern.append({
                 'station': s,
@@ -1142,6 +1144,154 @@ def create_app():
             db.delete_impfung(id)
             flash('Impfung geloescht.', 'success')
             return redirect(url_for('patient_detail', id=patient_id))
+        return redirect(url_for('patienten_liste'))
+
+    # ════════════════════════════════════════════════════════
+    # BLUTENTNAHMEN
+    # ════════════════════════════════════════════════════════
+
+    @app.route('/blutentnahmen')
+    @login_required
+    def blutentnahmen_liste():
+        status_filter = request.args.get('status', None)
+        if status_filter not in ('offen', 'durchgefuehrt'):
+            status_filter = None
+        blutentnahmen = db.get_alle_blutentnahmen(status_filter)
+        return render_template('blutentnahmen/liste.html',
+                               blutentnahmen=blutentnahmen,
+                               status_filter=status_filter)
+
+    @app.route('/patienten/<int:p_id>/blutentnahmen/neu', methods=['GET', 'POST'])
+    @login_required
+    def blutentnahme_neu(p_id):
+        patient = db.get_patient(p_id)
+        if not patient:
+            abort(404)
+        if request.method == 'POST':
+            anlass = request.form.get('anlass', '').strip()
+            if not anlass:
+                flash('Anlass der Blutentnahme ist erforderlich.', 'danger')
+                return render_template('blutentnahmen/form.html', patient=patient)
+
+            ist_standard = 'ist_standard' in request.form
+            intervall = request.form.get('wiederholung_intervall_jahre')
+            try:
+                intervall_jahre = int(intervall) if intervall else None
+            except ValueError:
+                intervall_jahre = None
+
+            bid = db.create_blutentnahme(p_id, anlass, ist_standard, intervall_jahre)
+            protokoll('ERSTELLT', 'Blutentnahme', bid,
+                      f"{anlass} ({patient['nachname']})")
+            flash(f'Blutentnahme "{anlass}" erstellt.', 'success')
+            return redirect(url_for('patient_detail', id=p_id))
+        return render_template('blutentnahmen/form.html', patient=patient)
+
+    @app.route('/blutentnahmen/<int:id>/bearbeiten', methods=['GET', 'POST'])
+    @login_required
+    def blutentnahme_bearbeiten(id):
+        blutentnahme = db.get_blutentnahme(id)
+        if not blutentnahme:
+            abort(404)
+        patient = db.get_patient(blutentnahme['patient_id'])
+        dokus = db.get_blutentnahme_dokus(id)
+
+        if request.method == 'POST':
+            updates = {}
+
+            status = request.form.get('status', 'OFFEN')
+            plan_datum = request.form.get('plan_datum') or None
+            durchfuehrung_datum = request.form.get('durchfuehrung_datum') or None
+
+            if durchfuehrung_datum and status != 'DURCHGEFUEHRT':
+                status = 'DURCHGEFUEHRT'
+
+            updates['status'] = status
+            updates['plan_datum'] = plan_datum
+            updates['durchfuehrung_datum'] = durchfuehrung_datum
+
+            intervall = request.form.get('wiederholung_intervall_jahre')
+            try:
+                updates['wiederholung_intervall_jahre'] = int(intervall) if intervall else None
+            except ValueError:
+                updates['wiederholung_intervall_jahre'] = None
+
+            if status == 'DURCHGEFUEHRT' and durchfuehrung_datum and updates.get('wiederholung_intervall_jahre'):
+                try:
+                    d = datetime.strptime(durchfuehrung_datum, '%Y-%m-%d').date()
+                    nf = date(d.year + updates['wiederholung_intervall_jahre'],
+                              d.month, d.day)
+                    updates['naechste_faelligkeit'] = nf.isoformat()
+                except (ValueError, TypeError):
+                    updates['naechste_faelligkeit'] = None
+            else:
+                updates['naechste_faelligkeit'] = None
+
+            db.update_blutentnahme(id, **updates)
+            protokoll('BEARBEITET', 'Blutentnahme', id,
+                      f"{blutentnahme['anlass']} ({patient['nachname']})")
+            flash('Blutentnahme aktualisiert.', 'success')
+            return redirect(url_for('patient_detail', id=blutentnahme['patient_id']))
+
+        return render_template('blutentnahmen/form.html',
+                               patient=patient, blutentnahme=blutentnahme, dokus=dokus)
+
+    @app.route('/blutentnahmen/<int:id>/loeschen', methods=['POST'])
+    @login_required
+    def blutentnahme_loeschen(id):
+        blutentnahme = db.get_blutentnahme(id)
+        if blutentnahme:
+            patient_id = blutentnahme['patient_id']
+            protokoll('GELOESCHT', 'Blutentnahme', id, blutentnahme['anlass'])
+            db.delete_blutentnahme(id)
+            flash('Blutentnahme geloescht.', 'success')
+            return redirect(url_for('patient_detail', id=patient_id))
+        return redirect(url_for('patienten_liste'))
+
+    # ════════════════════════════════════════════════════════
+    # BLUTENTNAHMEN DOKUMENTATION
+    # ════════════════════════════════════════════════════════
+
+    @app.route('/blutentnahmen/<int:bid>/doku/neu', methods=['POST'])
+    @login_required
+    def blutentnahme_doku_neu(bid):
+        blutentnahme = db.get_blutentnahme(bid)
+        if not blutentnahme:
+            abort(404)
+        durchfuehrung_datum = request.form.get('durchfuehrung_datum') or None
+        bemerkung = request.form.get('bemerkung', '').strip()
+        db.create_blutentnahme_doku(bid, durchfuehrung_datum, bemerkung)
+        protokoll('ERSTELLT', 'Blutentnahme-Doku', bid,
+                  f"Doku fuer {blutentnahme['anlass']} ({blutentnahme['nachname']})")
+        flash('Dokumentation hinzugefuegt.', 'success')
+        return redirect(url_for('blutentnahme_bearbeiten', id=bid))
+
+    @app.route('/blutentnahmen/doku/<int:did>/bearbeiten', methods=['POST'])
+    @login_required
+    def blutentnahme_doku_bearbeiten(did):
+        doku = db.get_blutentnahme_doku(did)
+        if not doku:
+            abort(404)
+        updates = {}
+        updates['durchfuehrung_datum'] = request.form.get('durchfuehrung_datum') or None
+        updates['bemerkung'] = request.form.get('bemerkung', '').strip()
+        db.update_blutentnahme_doku(did, **updates)
+        protokoll('BEARBEITET', 'Blutentnahme-Doku', did,
+                  f"Doku fuer {doku['anlass']} ({doku['nachname']})")
+        flash('Dokumentation aktualisiert.', 'success')
+        return redirect(url_for('blutentnahme_bearbeiten', id=doku['blutentnahme_id']))
+
+    @app.route('/blutentnahmen/doku/<int:did>/loeschen', methods=['POST'])
+    @login_required
+    def blutentnahme_doku_loeschen(did):
+        doku = db.get_blutentnahme_doku(did)
+        if doku:
+            bid = doku['blutentnahme_id']
+            db.delete_blutentnahme_doku(did)
+            protokoll('GELOESCHT', 'Blutentnahme-Doku', did,
+                      f"Doku fuer {doku['anlass']} ({doku['nachname']})")
+            flash('Dokumentation geloescht.', 'success')
+            return redirect(url_for('blutentnahme_bearbeiten', id=bid))
         return redirect(url_for('patienten_liste'))
 
     # ════════════════════════════════════════════════════════

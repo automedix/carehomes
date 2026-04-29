@@ -125,6 +125,29 @@ def init_db():
             erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS blutentnahmen (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL REFERENCES patienten(id) ON DELETE CASCADE,
+            anlass TEXT NOT NULL,
+            ist_standard BOOLEAN DEFAULT 0,
+            plan_datum DATE,
+            status TEXT NOT NULL DEFAULT 'OFFEN'
+                CHECK(status IN ('OFFEN', 'GEPLANT', 'DURCHGEFUEHRT')),
+            durchfuehrung_datum DATE,
+            wiederholung_intervall_jahre INTEGER,
+            naechste_faelligkeit DATE,
+            erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS blutentnahmen_doku (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            blutentnahme_id INTEGER NOT NULL REFERENCES blutentnahmen(id) ON DELETE CASCADE,
+            durchfuehrung_datum DATE,
+            bemerkung TEXT,
+            erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            bearbeitet_am TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS dokumente (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             patient_id INTEGER NOT NULL REFERENCES patienten(id) ON DELETE CASCADE,
@@ -960,6 +983,154 @@ def update_impfung(impfung_id, **kwargs):
     db.commit()
 
 
+
+# ============================================================
+# CRUD: Blutentnahmen
+# ============================================================
+
+def get_blutentnahmen(patient_id):
+    db = get_db()
+    return db.execute(
+        "SELECT * FROM blutentnahmen WHERE patient_id = ? ORDER BY anlass",
+        (patient_id,)
+    ).fetchall()
+
+
+def get_offene_blutentnahmen(patient_id):
+    db = get_db()
+    return db.execute(
+        "SELECT * FROM blutentnahmen WHERE patient_id = ? AND status IN ('OFFEN', 'GEPLANT') ORDER BY anlass",
+        (patient_id,)
+    ).fetchall()
+
+
+def get_blutentnahme(blutentnahme_id):
+    db = get_db()
+    return db.execute(
+        "SELECT b.*, p.nachname, p.vorname "
+        "FROM blutentnahmen b JOIN patienten p ON b.patient_id = p.id "
+        "WHERE b.id = ?", (blutentnahme_id,)
+    ).fetchone()
+
+
+def create_blutentnahme(patient_id, anlass, ist_standard=False,
+                        wiederholung_intervall_jahre=None):
+    db = get_db()
+    db.execute(
+        "INSERT INTO blutentnahmen (patient_id, anlass, ist_standard, "
+        "wiederholung_intervall_jahre) VALUES (?, ?, ?, ?)",
+        (patient_id, anlass, ist_standard, wiederholung_intervall_jahre)
+    )
+    db.commit()
+    return db.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+
+def update_blutentnahme(blutentnahme_id, **kwargs):
+    db = get_db()
+    erlaubte_felder = {
+        'anlass', 'ist_standard', 'plan_datum', 'status',
+        'durchfuehrung_datum', 'wiederholung_intervall_jahre',
+        'naechste_faelligkeit'
+    }
+    felder = {k: v for k, v in kwargs.items() if k in erlaubte_felder}
+    if not felder:
+        return
+    set_clause = ", ".join(f"{k} = ?" for k in felder)
+    values = list(felder.values()) + [blutentnahme_id]
+    db.execute(f"UPDATE blutentnahmen SET {set_clause} WHERE id = ?", values)
+    db.commit()
+
+
+def delete_blutentnahme(blutentnahme_id):
+    db = get_db()
+    db.execute("DELETE FROM blutentnahmen WHERE id = ?", (blutentnahme_id,))
+    db.commit()
+
+
+# ============================================================
+# CRUD: Blutentnahmen Dokumentation
+# ============================================================
+
+def get_blutentnahme_dokus(blutentnahme_id):
+    db = get_db()
+    return db.execute(
+        "SELECT * FROM blutentnahmen_doku WHERE blutentnahme_id = ? ORDER BY erstellt_am DESC",
+        (blutentnahme_id,)
+    ).fetchall()
+
+
+def get_blutentnahme_doku(doku_id):
+    db = get_db()
+    return db.execute(
+        "SELECT d.*, b.anlass, b.patient_id, p.nachname, p.vorname "
+        "FROM blutentnahmen_doku d "
+        "JOIN blutentnahmen b ON d.blutentnahme_id = b.id "
+        "JOIN patienten p ON b.patient_id = p.id "
+        "WHERE d.id = ?", (doku_id,)
+    ).fetchone()
+
+
+def create_blutentnahme_doku(blutentnahme_id, durchfuehrung_datum, bemerkung):
+    db = get_db()
+    db.execute(
+        "INSERT INTO blutentnahmen_doku (blutentnahme_id, durchfuehrung_datum, bemerkung) "
+        "VALUES (?, ?, ?)",
+        (blutentnahme_id, durchfuehrung_datum, bemerkung)
+    )
+    db.commit()
+    return db.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+
+def update_blutentnahme_doku(doku_id, **kwargs):
+    db = get_db()
+    erlaubte_felder = {'durchfuehrung_datum', 'bemerkung'}
+    felder = {k: v for k, v in kwargs.items() if k in erlaubte_felder}
+    if not felder:
+        return
+    felder['bearbeitet_am'] = "CURRENT_TIMESTAMP"
+    set_clause = ", ".join(f"{k} = ?" for k in felder)
+    values = list(felder.values()) + [doku_id]
+    db.execute(f"UPDATE blutentnahmen_doku SET {set_clause} WHERE id = ?", values)
+    db.commit()
+
+
+def delete_blutentnahme_doku(doku_id):
+    db = get_db()
+    db.execute("DELETE FROM blutentnahmen_doku WHERE id = ?", (doku_id,))
+    db.commit()
+
+
+# ============================================================
+# Blutentnahmen-Übersicht
+# ============================================================
+
+def get_alle_blutentnahmen(status_filter=None):
+    db = get_db()
+    sql = (
+        "SELECT b.id, b.patient_id, b.anlass, b.ist_standard, "
+        "b.plan_datum, b.status, b.durchfuehrung_datum, "
+        "b.naechste_faelligkeit, "
+        "p.vorname, p.nachname "
+        "FROM blutentnahmen b "
+        "JOIN patienten p ON b.patient_id = p.id "
+        "WHERE p.aktiv = 1"
+    )
+    params = []
+    if status_filter == 'offen':
+        sql += " AND b.status IN ('OFFEN', 'GEPLANT')"
+    elif status_filter == 'durchgefuehrt':
+        sql += " AND b.status = 'DURCHGEFUEHRT'"
+
+    sql += (
+        " ORDER BY "
+        "CASE WHEN b.status = 'DURCHGEFUEHRT' THEN 1 ELSE 0 END, "
+        "CASE WHEN b.naechste_faelligkeit IS NOT NULL THEN 0 ELSE 1 END, "
+        "b.naechste_faelligkeit ASC, "
+        "p.nachname, p.vorname"
+    )
+    return db.execute(sql, params).fetchall()
+
+
 def delete_impfung(impfung_id):
     db = get_db()
     db.execute("DELETE FROM impfungen WHERE id = ?", (impfung_id,))
@@ -1120,6 +1291,10 @@ def get_dashboard_stats():
     stats['impfungen_offen'] = db.execute(
         "SELECT COUNT(*) FROM impfungen i JOIN patienten p ON i.patient_id = p.id "
         "WHERE i.status = 'OFFEN' AND p.aktiv = 1"
+    ).fetchone()[0]
+    stats['blutentnahmen_offen'] = db.execute(
+        "SELECT COUNT(*) FROM blutentnahmen b JOIN patienten p ON b.patient_id = p.id "
+        "WHERE b.status IN ('OFFEN', 'GEPLANT') AND p.aktiv = 1"
     ).fetchone()[0]
     stats['behandler'] = db.execute("SELECT COUNT(*) FROM behandler").fetchone()[0]
 

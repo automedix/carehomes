@@ -221,7 +221,41 @@ def init_db():
     except sqlcipher3.OperationalError:
         pass  # Spalte existiert bereits
 
-    # Migration: 'ANGEFRAGT' zu einverstaendnis_status CHECK-Constraint hinzufügen
+    # Migration: blutentnahmen Intervall von Jahren zu Monaten
+    cols = [c[1] for c in db.execute("PRAGMA table_info(blutentnahmen)").fetchall()]
+    if 'wiederholung_intervall_jahre' in cols and 'wiederholung_intervall_monate' not in cols:
+        db.execute("PRAGMA foreign_keys = OFF")
+        db.execute('''
+            CREATE TABLE blutentnahmen_migr (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id INTEGER NOT NULL REFERENCES patienten(id) ON DELETE CASCADE,
+                anlass TEXT NOT NULL,
+                ist_standard BOOLEAN DEFAULT 0,
+                plan_datum DATE,
+                status TEXT NOT NULL DEFAULT 'OFFEN'
+                    CHECK(status IN ('OFFEN', 'GEPLANT', 'DURCHGEFUEHRT')),
+                durchfuehrung_datum DATE,
+                wiederholung_intervall_monate INTEGER,
+                naechste_faelligkeit DATE,
+                erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        db.execute('''
+            INSERT INTO blutentnahmen_migr
+            (id, patient_id, anlass, ist_standard, plan_datum, status,
+             durchfuehrung_datum, wiederholung_intervall_monate, naechste_faelligkeit, erstellt_am)
+            SELECT id, patient_id, anlass, ist_standard, plan_datum, status,
+                   durchfuehrung_datum,
+                   CASE WHEN wiederholung_intervall_jahre IS NOT NULL THEN wiederholung_intervall_jahre * 12 ELSE NULL END,
+                   naechste_faelligkeit, erstellt_am
+            FROM blutentnahmen
+        ''')
+        db.execute("DROP TABLE blutentnahmen")
+        db.execute("ALTER TABLE blutentnahmen_migr RENAME TO blutentnahmen")
+        db.execute("UPDATE sqlite_sequence SET name='blutentnahmen' WHERE name='blutentnahmen_migr'")
+        db.execute("PRAGMA foreign_keys = ON")
+
+    # Migration: 'ANGEFRAGT' zu einverstaendnis_status CHECK-Constraint hinzufuegen
     schema_row = db.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='impfungen'"
     ).fetchone()

@@ -36,9 +36,9 @@
                 </datalist>
             </div>
             <div class="form-group">
-                <label class="form-label" for="wiederholung_intervall_jahre">Intervall (Jahre)</label>
-                <input type="number" id="wiederholung_intervall_jahre" name="wiederholung_intervall_jahre"
-                    class="form-control" min="0" placeholder="z.B. 1">
+                <label class="form-label" for="wiederholung_intervall_monate">Intervall (Monate)</label>
+                <input type="number" id="wiederholung_intervall_monate" name="wiederholung_intervall_monate"
+                    class="form-control" min="0" placeholder="z.B. 3">
             </div>
         </div>
         <div class="form-group">
@@ -74,9 +74,9 @@
                     value="{{ blutentnahme.durchfuehrung_datum if blutentnahme.durchfuehrung_datum else '' }}">
             </div>
             <div class="form-group">
-                <label class="form-label">Intervall (Jahre)</label>
-                <input type="number" name="wiederholung_intervall_jahre" class="form-control" min="0"
-                    value="{{ blutentnahme.wiederholung_intervall_jahre if blutentnahme.wiederholung_intervall_jahre else '' }}">
+                <label class="form-label">Intervall (Monate)</label>
+                <input type="number" name="wiederholung_intervall_monate" class="form-control" min="0"
+                    value="{{ blutentnahme.wiederholung_intervall_monate if blutentnahme.wiederholung_intervall_monate else '' }}">
             </div>
         </div>
 

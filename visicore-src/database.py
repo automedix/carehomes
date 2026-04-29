@@ -134,7 +134,7 @@ def init_db():
             status TEXT NOT NULL DEFAULT 'OFFEN'
                 CHECK(status IN ('OFFEN', 'GEPLANT', 'DURCHGEFUEHRT')),
             durchfuehrung_datum DATE,
-            wiederholung_intervall_jahre INTEGER,
+            wiederholung_intervall_monate INTEGER,
             naechste_faelligkeit DATE,
             erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -1014,12 +1014,12 @@ def get_blutentnahme(blutentnahme_id):
 
 
 def create_blutentnahme(patient_id, anlass, ist_standard=False,
-                        wiederholung_intervall_jahre=None):
+                        wiederholung_intervall_monate=None):
     db = get_db()
     db.execute(
         "INSERT INTO blutentnahmen (patient_id, anlass, ist_standard, "
-        "wiederholung_intervall_jahre) VALUES (?, ?, ?, ?)",
-        (patient_id, anlass, ist_standard, wiederholung_intervall_jahre)
+        "wiederholung_intervall_monate) VALUES (?, ?, ?, ?)",
+        (patient_id, anlass, ist_standard, wiederholung_intervall_monate)
     )
     db.commit()
     return db.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -1029,7 +1029,7 @@ def update_blutentnahme(blutentnahme_id, **kwargs):
     db = get_db()
     erlaubte_felder = {
         'anlass', 'ist_standard', 'plan_datum', 'status',
-        'durchfuehrung_datum', 'wiederholung_intervall_jahre',
+        'durchfuehrung_datum', 'wiederholung_intervall_monate',
         'naechste_faelligkeit'
     }
     felder = {k: v for k, v in kwargs.items() if k in erlaubte_felder}

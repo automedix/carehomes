@@ -1174,7 +1174,7 @@ def create_app():
                 return render_template('blutentnahmen/form.html', patient=patient)
 
             ist_standard = 'ist_standard' in request.form
-            intervall = request.form.get('wiederholung_intervall_jahre')
+            intervall = request.form.get('wiederholung_intervall_monate')
             try:
                 intervall_jahre = int(intervall) if intervall else None
             except ValueError:
@@ -1210,17 +1210,23 @@ def create_app():
             updates['plan_datum'] = plan_datum
             updates['durchfuehrung_datum'] = durchfuehrung_datum
 
-            intervall = request.form.get('wiederholung_intervall_jahre')
+            intervall = request.form.get('wiederholung_intervall_monate')
             try:
-                updates['wiederholung_intervall_jahre'] = int(intervall) if intervall else None
+                updates['wiederholung_intervall_monate'] = int(intervall) if intervall else None
             except ValueError:
-                updates['wiederholung_intervall_jahre'] = None
+                updates['wiederholung_intervall_monate'] = None
 
-            if status == 'DURCHGEFUEHRT' and durchfuehrung_datum and updates.get('wiederholung_intervall_jahre'):
+            if status == 'DURCHGEFUEHRT' and durchfuehrung_datum and updates.get('wiederholung_intervall_monate'):
                 try:
                     d = datetime.strptime(durchfuehrung_datum, '%Y-%m-%d').date()
-                    nf = date(d.year + updates['wiederholung_intervall_jahre'],
-                              d.month, d.day)
+                    months = updates['wiederholung_intervall_monate']
+                    new_month = d.month + months
+                    new_year = d.year + (new_month - 1) // 12
+                    new_month = (new_month - 1) % 12 + 1
+                    import calendar
+                    max_day = calendar.monthrange(new_year, new_month)[1]
+                    new_day = min(d.day, max_day)
+                    nf = date(new_year, new_month, new_day)
                     updates['naechste_faelligkeit'] = nf.isoformat()
                 except (ValueError, TypeError):
                     updates['naechste_faelligkeit'] = None

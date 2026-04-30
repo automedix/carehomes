@@ -1640,3 +1640,81 @@ def get_faellige_stationen(stichtag=None):
         ") ORDER BY e.name, s.name",
         (stichtag, stichtag)
     ).fetchall()
+# ============================================================
+# Einrichtungs-Übersichten: Blutentnahmen & Impfungen
+# ============================================================
+
+def get_blutentnahmen_einrichtung(einrichtung_id, stichtag=None):
+    """
+    Holt alle Blutentnahmen der Patienten in dieser Einrichtung,
+    deren naechste_faelligkeit im aktuellen Quartal liegt oder
+    die überfällig sind.
+    Sortierung: zuerst überfällig (naechste_faelligkeit < heute),
+    dann chronologisch.
+    """
+    db = get_db()
+    if stichtag is None:
+        stichtag = date.today().isoformat()
+    cursor = db.execute(
+        "SELECT substr(?, 1, 4) AS jahr, CAST(substr(?, 6, 2) AS INTEGER) AS monat",
+        (stichtag, stichtag)
+    )
+    row = cursor.fetchone()
+    jahr, monat = int(row[0]), int(row[1])
+    q_start_monat = ((monat - 1) // 3) * 3 + 1
+    q_end_monat = q_start_monat + 2
+    q_end_jahr = jahr if q_end_monat <= 12 else jahr + 1
+    q_end_monat = q_end_monat if q_end_monat <= 12 else q_end_monat - 12
+    q_start = f"{jahr:04d}-{q_start_monat:02d}-01"
+    q_end = f"{q_end_jahr:04d}-{q_end_monat:02d}-31"
+
+    sql = (
+        "SELECT b.id, b.patient_id, b.anlass, b.ist_standard, "
+        "b.plan_datum, b.status, b.durchfuehrung_datum, "
+        "b.naechste_faelligkeit, b.wiederholung_intervall_monate, "
+        "p.vorname, p.nachname, s.name AS station_name "
+        "FROM blutentnahmen b "
+        "JOIN patienten p ON b.patient_id = p.id "
+        "LEFT JOIN stationen s ON p.station_id = s.id "
+        "WHERE p.aktiv = 1 AND p.station_id IN (SELECT id FROM stationen WHERE einrichtung_id = ?) "
+        "AND (b.naechste_faelligkeit IS NOT NULL OR b.status = 'OFFEN' OR b.status = 'GEPLANT') "
+        "AND ("
+        "    ((b.status = 'OFFEN' OR b.status = 'GEPLANT') AND b.naechste_faelligkeit < ?)"
+        "    OR "
+        "    ((b.status = 'OFFEN' OR b.status = 'GEPLANT') AND b.naechste_faelligkeit >= ? AND b.naechste_faelligkeit <= ?)"
+        "    OR "
+        "    (b.status = 'DURCHGEFUEHRT' AND b.naechste_faelligkeit >= ? AND b.naechste_faelligkeit <= ?)"
+        ")"
+        "ORDER BY "
+        "  CASE WHEN (b.status = 'OFFEN' OR b.status = 'GEPLANT') AND b.naechste_faelligkeit \u003c ? THEN 0 ELSE 1 END, "
+        "  b.naechste_faelligkeit ASC, "
+        "  p.nachname, p.vorname, b.anlass"
+    )
+    return db.execute(sql, (einrichtung_id, stichtag, q_start, q_end, q_start, q_end, stichtag)).fetchall()
+
+
+def get_faellige_impfungen_einrichtung(einrichtung_id, stichtag=None):
+    """
+    Holt Impfungen der Patienten in dieser Einrichtung, deren
+    naechste_faelligkeit <= stichtag (tatsächlich fällig).
+    KEINE "bald fälligen" (zukünftigen).
+    """
+    db = get_db()
+    if stichtag is None:
+        stichtag = date.today().isoformat()
+    sql = (
+        "SELECT i.id, i.patient_id, i.impftyp, i.ist_standardimpfung, "
+        "i.plan_datum, i.status, i.durchfuehrung_datum, "
+        "i.naechste_faelligkeit, i.einverstaendnis_status, "
+        "p.vorname, p.nachname, s.name AS station_name, "
+        "d.id AS dokument_id "
+        "FROM impfungen i "
+        "JOIN patienten p ON i.patient_id = p.id "
+        "LEFT JOIN stationen s ON p.station_id = s.id "
+        "LEFT JOIN dokumente d ON d.impfung_id = i.id "
+        "WHERE p.aktiv = 1 AND p.station_id IN (SELECT id FROM stationen WHERE einrichtung_id = ?) "
+        "AND i.status IN ('OFFEN', 'GEPLANT') "
+        "AND (i.naechste_faelligkeit IS NOT NULL AND i.naechste_faelligkeit <= ?) "
+        "ORDER BY i.naechste_faelligkeit ASC, p.nachname, p.vorname, i.impftyp"
+    )
+    return db.execute(sql, (einrichtung_id, stichtag)).fetchall()
